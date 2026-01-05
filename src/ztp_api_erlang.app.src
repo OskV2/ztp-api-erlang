@@ -1,0 +1,17 @@
+{application, ztp_api_erlang, [
+    {description, "An OTP application"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {ztp_api_erlang_app, []}},
+    {applications, [
+        kernel,
+        stdlib,
+        cowboy,  %% DODAJ TO
+        epgsql,  %% DODAJ TO
+        jsx      %% DODAJ TO
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache-2.0"]},
+    {links, []}
+ ]}.
