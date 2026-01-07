@@ -4,27 +4,34 @@
 
 init(Req0, State) ->
     Method = cowboy_req:method(Req0),
-    %% Wyciągamy ID ze ścieżki (jeśli istnieje)
-    %% path_info dla /api/v1/user/5 zwróci [<<"5">>]
-    PathInfo = cowboy_req:path_info(Req0),
-    handle(Method, PathInfo, Req0, State).
+    %% Używamy binding - to zwraca pojedyncze binary (np. <<"5">>) lub undefined
+    Id = cowboy_req:binding(id, Req0),
+    handle(Method, Id, Req0, State).
 
-%% GET /api/v1/user
-handle(<<"GET">>, _, Req, State) ->
+%% GET /api/v1/user (bez ID)
+handle(<<"GET">>, undefined, Req, State) ->
     Users = user_db:get_all_users(),
     reply_json(200, Users, Req, State);
 
-%% POST /api/v1/user
-handle(<<"POST">>, _, Req0, State) ->
+%% POST /api/v1/user (bez ID)
+handle(<<"POST">>, undefined, Req0, State) ->
     {ok, Body, Req1} = cowboy_req:read_body(Req0),
     Data = jsx:decode(Body, [return_maps]),
     Username = maps:get(<<"username">>, Data),
     Email = maps:get(<<"email">>, Data),
-    {ok, NewUser} = user_db:create_user(Username, Email),
+    
+    %% ZMIANA 2: Usunięto "{ok, }". Teraz pasuje do tego, co zwraca user_db (mapa).
+    NewUser = user_db:create_user(Username, Email),
+    
+    %% --- DEBUGOWANIE START ---
+    io:format("~n[DEBUG] Dane do JSONa: ~p~n", [NewUser]),
+    %% --- DEBUGOWANIE END ---
+
     reply_json(201, NewUser, Req1, State);
 
 %% PATCH /api/v1/user/{id}
-handle(<<"PATCH">>, [IdBin], Req0, State) ->
+%% ZMIANA 3: Dopasowanie do zmiennej Id (binary), a nie listy [IdBin]
+handle(<<"PATCH">>, IdBin, Req0, State) when IdBin /= undefined ->
     Id = binary_to_integer(IdBin),
     {ok, Body, Req1} = cowboy_req:read_body(Req0),
     Updates = jsx:decode(Body, [return_maps]),
@@ -34,10 +41,12 @@ handle(<<"PATCH">>, [IdBin], Req0, State) ->
     end;
 
 %% DELETE /api/v1/user/{id}
-handle(<<"DELETE">>, [IdBin], Req, State) ->
+handle(<<"DELETE">>, IdBin, Req, State) when IdBin /= undefined ->
     Id = binary_to_integer(IdBin),
     case user_db:delete_user(Id) of
-        ok -> cowboy_req:reply(204, Req), {ok, Req, State};
+        ok -> 
+            Req1 = cowboy_req:reply(204, Req),
+            {ok, Req1, State};
         {error, not_found} -> reply_error(404, Req, State)
     end;
 

@@ -3,6 +3,9 @@
 %% @end
 %%%-------------------------------------------------------------------
 
+%%  HOW TO RUN:
+%%  rebar3 compile && rebar3 shell
+
 -module(ztp_api_erlang_app).
 -behaviour(application).
 -export([start/2, stop/1]).
@@ -10,8 +13,16 @@
 start(_StartType, _StartArgs) ->
     Dispatch = cowboy_router:compile([
         {'_', [
-            {"/api/v1/user/[...]", user_handler, []}
-            %% dodaj inne ścieżki tutaj
+            % user
+            {"/api/v1/user", user_handler, []},
+            {"/api/v1/user/:id", user_handler, []},
+            
+            % user profile
+            {"/api/v1/user-profile/:id", user_profile_handler, []},
+            
+            % tag
+            {"/api/v1/tag", tag_handler, []},
+            {"/api/v1/tag/:id", tag_handler, []}
         ]}
     ]),
     {ok, _} = cowboy:start_clear(my_http_listener,
