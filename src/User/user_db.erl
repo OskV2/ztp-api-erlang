@@ -1,13 +1,26 @@
 -module(user_db).
--export([get_all_users/0, create_user/2, update_user/2, delete_user/1]).
+-export([get_all_users/1, create_user/2, update_user/2, delete_user/1]).
 
-%% Pobieranie wszystkich userów
-get_all_users() ->
+%% Wersja bez profilu (profile=false lub brak parametru)
+get_all_users(false) ->
     C = db_worker:get_connection(),
     {ok, _, Rows} = epgsql:equery(C, "SELECT id, username, email FROM \"User\"", []),
     epgsql:close(C),
-    %% Używamy funkcji pomocniczej w liście składanej
-    [ row_to_map(Row) || Row <- Rows ].
+    [row_to_map(Row) || Row <- Rows];
+
+%% Wersja z profilem (profile=true) -> Używamy LEFT JOIN
+get_all_users(true) ->
+    C = db_worker:get_connection(),
+    %% Pobieramy dane usera (u) oraz profilu (p)
+    Query = "SELECT u.id, u.username, u.email, p.bio, p.website 
+             FROM \"User\" u 
+             LEFT JOIN \"UserProfile\" p ON u.id = p.\"userId\"",
+    
+    {ok, _, Rows} = epgsql:equery(C, Query, []),
+    epgsql:close(C),
+    
+    %% Mapujemy wyniki używając nowej funkcji pomocniczej
+    [row_to_map_with_profile(Row) || Row <- Rows].
 
 %% Tworzenie usera z profilem (transakcja)
 create_user(Username, Email) ->
@@ -64,4 +77,17 @@ row_to_map({Id, Username, Email}) ->
         <<"id">> => Id, 
         <<"username">> => Username, 
         <<"email">> => Email
+    }.
+
+%% Nowy helper (dla true)
+row_to_map_with_profile({Id, Username, Email, Bio, Website}) ->
+    #{
+        <<"id">> => Id, 
+        <<"username">> => Username, 
+        <<"email">> => Email,
+        %% Zagnieżdżamy obiekt profile, tak jak robi to Prisma
+        <<"profile">> => #{
+            <<"bio">> => Bio,
+            <<"website">> => Website
+        }
     }.

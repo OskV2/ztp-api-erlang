@@ -8,9 +8,21 @@ init(Req0, State) ->
     Id = cowboy_req:binding(id, Req0),
     handle(Method, Id, Req0, State).
 
-%% GET /api/v1/user (bez ID)
+%% GET /api/v1/user?profile=true
 handle(<<"GET">>, undefined, Req, State) ->
-    Users = user_db:get_all_users(),
+    %% 1. Parsujemy Query String (zwraca listę krotek [{<<"key">>, <<"val">>}, ...])
+    Qs = cowboy_req:parse_qs(Req),
+    
+    %% 2. Sprawdzamy wartość klucza "profile"
+    %% proplists:get_value szuka klucza w liście. Jeśli nie znajdzie, zwraca "false" (trzeci argument)
+    IncludeProfile = case proplists:get_value(<<"profile">>, Qs, <<"false">>) of
+        <<"true">> -> true;
+        _ -> false
+    end,
+
+    %% 3. Przekazujemy flagę do bazy danych
+    Users = user_db:get_all_users(IncludeProfile),
+    
     reply_json(200, Users, Req, State);
 
 %% POST /api/v1/user (bez ID)
