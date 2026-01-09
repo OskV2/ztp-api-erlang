@@ -7,15 +7,30 @@ init(Req0, State) ->
     Id = cowboy_req:binding(id, Req0),
     handle(Method, Id, Req0, State).
 
-%% GET /api/v1/post (parametry query)
+%% GET /api/v1/post (parametry query + paginacja)
 handle(<<"GET">>, undefined, Req, State) ->
     Qs = cowboy_req:parse_qs(Req),
     
-    %% Sprawdzamy flagi ?author=true i ?tags=true
+    %% Filtry
     IncAuthor = is_true(proplists:get_value(<<"author">>, Qs)),
     IncTags = is_true(proplists:get_value(<<"tags">>, Qs)),
 
-    Posts = post_db:get_all_posts(IncAuthor, IncTags),
+    %% Paginacja (Domyślnie: Page 1, Limit 20)
+    PageBin = proplists:get_value(<<"page">>, Qs, <<"1">>),
+    LimitBin = proplists:get_value(<<"limit">>, Qs, <<"20">>),
+
+    Page = try binary_to_integer(PageBin) catch _:_ -> 1 end,
+    Limit = try binary_to_integer(LimitBin) catch _:_ -> 20 end,
+
+    %% Obliczamy Offset (SQL liczy od 0)
+    %% Strona 1 -> Offset 0
+    %% Strona 2 -> Offset 20
+    Offset = (Page - 1) * Limit,
+
+    %% Wywołanie bazy z nowymi argumentami
+    Posts = post_db:get_all_posts(IncAuthor, IncTags, Limit, Offset),
+    
+    %% Opcjonalnie: Możesz zwrócić metadane paginacji w nagłówkach lub owinąć JSON
     reply_json(200, Posts, Req, State);
 
 %% GET /api/v1/post/:id (Pojedynczy)
