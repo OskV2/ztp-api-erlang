@@ -22,7 +22,11 @@ start(_StartType, _StartArgs) ->
             
             % tag
             {"/api/v1/tag", tag_handler, []},
-            {"/api/v1/tag/:id", tag_handler, []}
+            {"/api/v1/tag/:id", tag_handler, []},
+
+            % post
+            {"/api/v1/post", post_handler, []},
+            {"/api/v1/post/:id", post_handler, []}
         ]}
     ]),
     {ok, _} = cowboy:start_clear(my_http_listener,
