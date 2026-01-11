@@ -30,10 +30,10 @@ init([]) ->
     PoolArgs = [
         {name, {local, db_pool}},
         {worker_module, db_worker},
-        {size, 20},       %% 20 stałych połączeń
-        {max_overflow, 30} %% 10 zapasowych w razie tłoku
+        {size, 20},        %% 20 stałych połączeń
+        {max_overflow, 30} %% 10 zapasowych
     ],
-    WorkerArgs = [], %% Argumenty dla db_worker:init (nie używamy, bo mamy hardcoded dane)
+    WorkerArgs = [],
 
     PoolSpec = poolboy:child_spec(db_pool, PoolArgs, WorkerArgs),
 
@@ -41,9 +41,6 @@ init([]) ->
                  intensity => 1,
                  period => 5},
     
-    %% Dodajemy PoolSpec do listy dzieci
     ChildSpecs = [PoolSpec], 
     
     {ok, {SupFlags, ChildSpecs}}.
-
-%% internal functions

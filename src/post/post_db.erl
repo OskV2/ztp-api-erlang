@@ -2,7 +2,6 @@
 -include_lib("epgsql/include/epgsql.hrl").
 -export([get_all_posts/4, create_post/4, update_post/2, delete_post/1, get_post/1]).
 
-%% --- GET (Paginacja + Poolboy) ---
 get_all_posts(IncAuthor, IncTags, Limit, Offset) ->
     BaseFields = ["p.id", "p.title", "p.content", "p.published", "p.\"authorId\""],
     BaseFrom = ["FROM \"Post\" p"],
@@ -34,16 +33,11 @@ get_all_posts(IncAuthor, IncTags, Limit, Offset) ->
         string:join(GroupBy2, ", ")
     ])),
 
-    %% ZMIANA: Używamy db_worker:query zamiast ręcznego epgsql:equery
-    %% Poolboy sam pobierze połączenie i je odda.
     {ok, Columns, Rows} = db_worker:query(QueryString, [Limit, Offset]),
 
     [dynamic_row_map(Columns, Row) || Row <- Rows].
 
-%% --- POZOSTAŁE CRUD ---
-
 get_post(Id) ->
-    %% ZMIANA: Krócej i czyściej
     Res = db_worker:query("SELECT id, title, content, published, \"authorId\" FROM \"Post\" WHERE id = $1", [Id]),
     case Res of
         {ok, _, [Row]} -> {ok, row_to_map(Row)};
@@ -51,8 +45,6 @@ get_post(Id) ->
     end.
 
 create_post(Title, Content, AuthorId, TagIds) ->
-    %% ZMIANA: Używamy db_worker:transaction
-    %% Funkcja anonimowa dostaje Conn, który jest już wyjęty z puli
     try
         db_worker:transaction(fun(Conn) ->
             {ok, _, _, [{PostId, Pub, AuthId}]} = epgsql:equery(Conn, 
@@ -78,13 +70,11 @@ create_post(Title, Content, AuthorId, TagIds) ->
     end.
 
 update_post(Id, Updates) ->
-    %% Najpierw pobranie (używamy db_worker:query)
     case db_worker:query("SELECT title, content FROM \"Post\" WHERE id = $1", [Id]) of
         {ok, _, [{OldTitle, OldContent}]} ->
             NewTitle = maps:get(<<"title">>, Updates, OldTitle),
             NewContent = maps:get(<<"content">>, Updates, OldContent),
             
-            %% Potem update (też db_worker:query)
             {ok, _, _, [Row]} = db_worker:query(
                 "UPDATE \"Post\" SET title = $1, content = $2 WHERE id = $3 RETURNING id, title, content, published, \"authorId\"",
                 [NewTitle, NewContent, Id]),
@@ -96,8 +86,6 @@ update_post(Id, Updates) ->
 delete_post(Id) ->
     {ok, Count} = db_worker:query("DELETE FROM \"Post\" WHERE id = $1", [Id]),
     case Count of 1 -> ok; 0 -> {error, not_found} end.
-
-%% --- HELPERS (Bez zmian) ---
 
 dynamic_row_map(Columns, RowTuple) ->
     RowList = tuple_to_list(RowTuple),

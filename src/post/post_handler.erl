@@ -7,33 +7,28 @@ init(Req0, State) ->
     Id = cowboy_req:binding(id, Req0),
     handle(Method, Id, Req0, State).
 
-%% GET /api/v1/post (parametry query + paginacja)
+%% GET /api/v1/post 
 handle(<<"GET">>, undefined, Req, State) ->
     Qs = cowboy_req:parse_qs(Req),
     
-    %% Filtry
+    %%  Query params
     IncAuthor = is_true(proplists:get_value(<<"author">>, Qs)),
     IncTags = is_true(proplists:get_value(<<"tags">>, Qs)),
 
-    %% Paginacja (Domyślnie: Page 1, Limit 20)
+    %%  Paginacja (Default: Page 1, Limit 20)
     PageBin = proplists:get_value(<<"page">>, Qs, <<"1">>),
     LimitBin = proplists:get_value(<<"limit">>, Qs, <<"20">>),
 
     Page = try binary_to_integer(PageBin) catch _:_ -> 1 end,
     Limit = try binary_to_integer(LimitBin) catch _:_ -> 20 end,
 
-    %% Obliczamy Offset (SQL liczy od 0)
-    %% Strona 1 -> Offset 0
-    %% Strona 2 -> Offset 20
     Offset = (Page - 1) * Limit,
 
-    %% Wywołanie bazy z nowymi argumentami
     Posts = post_db:get_all_posts(IncAuthor, IncTags, Limit, Offset),
     
-    %% Opcjonalnie: Możesz zwrócić metadane paginacji w nagłówkach lub owinąć JSON
     reply_json(200, Posts, Req, State);
 
-%% GET /api/v1/post/:id (Pojedynczy)
+%% GET /api/v1/post/:id
 handle(<<"GET">>, IdBin, Req, State) when IdBin /= undefined ->
     Id = binary_to_integer(IdBin),
     case post_db:get_post(Id) of
@@ -41,7 +36,7 @@ handle(<<"GET">>, IdBin, Req, State) when IdBin /= undefined ->
         {error, not_found} -> reply_error(404, Req, State)
     end;
 
-%% POST /api/v1/post (Create)
+%% POST /api/v1/post
 handle(<<"POST">>, undefined, Req0, State) ->
     {ok, Body, Req1} = cowboy_req:read_body(Req0),
     Data = jsx:decode(Body, [return_maps]),
@@ -87,7 +82,7 @@ handle(_, _, Req, State) ->
     cowboy_req:reply(405, Req),
     {ok, Req, State}.
 
-%% Helpers
+%%  Helpers
 is_true(<<"true">>) -> true;
 is_true(_) -> false.
 

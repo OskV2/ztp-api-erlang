@@ -1,7 +1,6 @@
 -module(user_profile_db).
 -export([get_profile/1, update_profile/2, create_default_profile/2]).
 
-%% Wywoływane przez user_db wewnątrz transakcji
 create_default_profile(Conn, UserId) ->
     Bio = <<"Hello! I'm new user!">>,
     Website = null,

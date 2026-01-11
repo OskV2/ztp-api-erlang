@@ -24,7 +24,6 @@ create_tag(Name) ->
     epgsql:close(C),
     case Result of
         {ok, 1, _, [Row]} -> {ok, row_to_map(Row)};
-        %% Opcjonalnie: obsługa błędu unikalności (jeśli nazwa tagu musi być unikalna)
         Error -> Error 
     end.
 
