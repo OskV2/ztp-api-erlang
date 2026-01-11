@@ -6,9 +6,10 @@
     {applications, [
         kernel,
         stdlib,
-        cowboy,  %% DODAJ TO
-        epgsql,  %% DODAJ TO
-        jsx      %% DODAJ TO
+        cowboy,
+        epgsql,
+        jsx,
+        poolboy
     ]},
     {env, []},
     {modules, []},

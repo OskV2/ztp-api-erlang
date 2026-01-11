@@ -26,12 +26,24 @@ start_link() ->
 %%                  type => worker(),       % optional
 %%                  modules => modules()}   % optional
 init([]) ->
-    SupFlags = #{
-        strategy => one_for_all,
-        intensity => 0,
-        period => 1
-    },
-    ChildSpecs = [],
+    %% Konfiguracja puli
+    PoolArgs = [
+        {name, {local, db_pool}},
+        {worker_module, db_worker},
+        {size, 20},       %% 20 stałych połączeń
+        {max_overflow, 30} %% 10 zapasowych w razie tłoku
+    ],
+    WorkerArgs = [], %% Argumenty dla db_worker:init (nie używamy, bo mamy hardcoded dane)
+
+    PoolSpec = poolboy:child_spec(db_pool, PoolArgs, WorkerArgs),
+
+    SupFlags = #{strategy => one_for_one,
+                 intensity => 1,
+                 period => 5},
+    
+    %% Dodajemy PoolSpec do listy dzieci
+    ChildSpecs = [PoolSpec], 
+    
     {ok, {SupFlags, ChildSpecs}}.
 
 %% internal functions
